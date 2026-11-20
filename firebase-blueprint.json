@@ -1,0 +1,214 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user profile storing active family workspace link and Google display identity.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the user." },
+        "displayName": { "type": "string", "description": "Display name from Google Sign-In." },
+        "email": { "type": "string", "description": "Email address from Google Sign-In." },
+        "activeWorkspaceId": { "type": "string", "description": "Currently selected shared family workspace ID." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "InviteCodeLookup": {
+      "title": "InviteCodeLookup",
+      "description": "Maps a 6-character invite code to a shared family workspace ID.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string", "description": "Target family workspace document ID." },
+        "workspaceName": { "type": "string", "description": "Display name of the family workspace." },
+        "createdBy": { "type": "string", "description": "UID of the workspace creator." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." }
+      },
+      "required": ["workspaceId", "workspaceName", "createdBy", "createdAt"]
+    },
+    "FamilyWorkspace": {
+      "title": "FamilyWorkspace",
+      "description": "Shared family ledger workspace containing member UIDs, invite code, and currency settings.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Family ledger display name." },
+        "inviteCode": { "type": "string", "description": "Unique 6-character uppercase invite code." },
+        "ownerId": { "type": "string", "description": "UID of the workspace owner." },
+        "memberUids": { "type": "array", "description": "Bounded list of member UIDs (max 20)." },
+        "currencyCode": { "type": "string", "description": "Selected currency code (e.g. INR, USD)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["name", "inviteCode", "ownerId", "memberUids", "currencyCode", "createdAt", "updatedAt"]
+    },
+    "WorkspaceAccount": {
+      "title": "WorkspaceAccount",
+      "description": "Financial account (Cash, Bank, UPI Wallet, etc.) inside a shared family workspace.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string" },
+        "name": { "type": "string" },
+        "initialBalanceMinor": { "type": "integer" },
+        "cachedBalanceMinor": { "type": "integer" },
+        "iconKey": { "type": "string" },
+        "colorArgb": { "type": "integer" },
+        "defaultAccount": { "type": "boolean" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "workspaceId",
+        "name",
+        "initialBalanceMinor",
+        "cachedBalanceMinor",
+        "iconKey",
+        "colorArgb",
+        "defaultAccount",
+        "memberUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkspaceCategory": {
+      "title": "WorkspaceCategory",
+      "description": "Expense or Income category inside a shared family workspace.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["EXPENSE", "INCOME"] },
+        "iconKey": { "type": "string" },
+        "colorArgb": { "type": "integer" },
+        "primaryCategory": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "sortOrder": { "type": "integer" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "workspaceId",
+        "name",
+        "type",
+        "iconKey",
+        "colorArgb",
+        "primaryCategory",
+        "archived",
+        "sortOrder",
+        "memberUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkspaceTransaction": {
+      "title": "WorkspaceTransaction",
+      "description": "Expense, Income, or Account-to-Account Transfer entry tagged with author display name/email.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string" },
+        "type": { "type": "string", "enum": ["EXPENSE", "INCOME", "TRANSFER"] },
+        "amountMinor": { "type": "integer" },
+        "accountId": { "type": "string" },
+        "destinationAccountId": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "dateMillis": { "type": "integer" },
+        "note": { "type": "string" },
+        "createdByUid": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdByEmail": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "workspaceId",
+        "type",
+        "amountMinor",
+        "accountId",
+        "dateMillis",
+        "note",
+        "createdByUid",
+        "createdByName",
+        "createdByEmail",
+        "memberUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkspaceDebt": {
+      "title": "WorkspaceDebt",
+      "description": "Receivable or Payable lending/borrowing record with partial settlement tracking linked to workspace accounts.",
+      "type": "object",
+      "properties": {
+        "workspaceId": { "type": "string" },
+        "type": { "type": "string", "enum": ["RECEIVABLE", "PAYABLE"] },
+        "personName": { "type": "string" },
+        "amountMinor": { "type": "integer", "description": "Original lent or borrowed principal amount in minor units." },
+        "settledAmountMinor": { "type": "integer", "description": "Cumulative settled amount in minor units." },
+        "remainingAmountMinor": { "type": "integer", "description": "Remaining unsettled balance in minor units." },
+        "sourceAccountId": { "type": "string" },
+        "dateMillis": { "type": "integer" },
+        "dueDateMillis": { "type": "integer" },
+        "note": { "type": "string" },
+        "settled": { "type": "boolean" },
+        "settledDateMillis": { "type": "integer" },
+        "settlementAccountId": { "type": "string" },
+        "settlements": { "type": "array", "description": "Chronological list of partial/full settlement entries." },
+        "createdByUid": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "memberUids": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "workspaceId",
+        "type",
+        "personName",
+        "amountMinor",
+        "settledAmountMinor",
+        "remainingAmountMinor",
+        "sourceAccountId",
+        "dateMillis",
+        "note",
+        "settled",
+        "settlements",
+        "createdByUid",
+        "createdByName",
+        "memberUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and active workspace link."
+    },
+    "/invite_codes/{inviteCode}": {
+      "schema": { "$ref": "#/entities/InviteCodeLookup" },
+      "description": "Exact-key invite code lookup for joining a shared family ledger."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/FamilyWorkspace" },
+      "description": "Shared family workspace metadata and membership list."
+    },
+    "/workspaces/{workspaceId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/WorkspaceAccount" },
+      "description": "Accounts inside a family workspace."
+    },
+    "/workspaces/{workspaceId}/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/WorkspaceCategory" },
+      "description": "Categories inside a family workspace."
+    },
+    "/workspaces/{workspaceId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/WorkspaceTransaction" },
+      "description": "Expenses, Income, and Account-to-Account Transfers inside a family workspace."
+    },
+    "/workspaces/{workspaceId}/debts/{debtId}": {
+      "schema": { "$ref": "#/entities/WorkspaceDebt" },
+      "description": "Receivables and Payables inside a family workspace."
+    }
+  }
+}

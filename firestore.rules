@@ -1,0 +1,386 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidInviteCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    function isValidMemberList(members) {
+      return members is list &&
+             members.size() >= 1 &&
+             members.size() <= 20 &&
+             members[0] is string;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 80 &&
+             data.email is string &&
+             data.email.size() <= 160 &&
+             (!('activeWorkspaceId' in data) || (isValidId(data.activeWorkspaceId))) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidInviteLookup(data) {
+      return isValidId(data.workspaceId) &&
+             data.workspaceName is string &&
+             data.workspaceName.size() >= 1 &&
+             data.workspaceName.size() <= 60 &&
+             data.createdBy is string &&
+             data.createdBy == request.auth.uid &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidWorkspace(data) {
+      return data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 60 &&
+             isValidInviteCode(data.inviteCode) &&
+             data.ownerId is string &&
+             isValidId(data.ownerId) &&
+             isValidMemberList(data.memberUids) &&
+             data.ownerId in data.memberUids &&
+             data.currencyCode is string &&
+             data.currencyCode.size() >= 2 &&
+             data.currencyCode.size() <= 6 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAccount(data, workspaceId) {
+      return data.workspaceId == workspaceId &&
+             data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 50 &&
+             data.initialBalanceMinor is int &&
+             data.cachedBalanceMinor is int &&
+             data.iconKey is string &&
+             data.iconKey.size() >= 1 &&
+             data.iconKey.size() <= 40 &&
+             data.colorArgb is int &&
+             data.defaultAccount is bool &&
+             isValidMemberList(data.memberUids) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCategory(data, workspaceId) {
+      return data.workspaceId == workspaceId &&
+             data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 50 &&
+             data.type in ['EXPENSE', 'INCOME'] &&
+             data.iconKey is string &&
+             data.iconKey.size() >= 1 &&
+             data.iconKey.size() <= 40 &&
+             data.colorArgb is int &&
+             data.primaryCategory is bool &&
+             data.archived is bool &&
+             data.sortOrder is int &&
+             data.sortOrder >= 0 &&
+             data.sortOrder <= 1000 &&
+             isValidMemberList(data.memberUids) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTransaction(data, workspaceId) {
+      return data.workspaceId == workspaceId &&
+             data.type in ['EXPENSE', 'INCOME', 'TRANSFER'] &&
+             data.amountMinor is int &&
+             data.amountMinor > 0 &&
+             isValidId(data.accountId) &&
+             (
+               (data.type == 'TRANSFER' &&
+                 'destinationAccountId' in data &&
+                 isValidId(data.destinationAccountId) &&
+                 data.destinationAccountId != data.accountId &&
+                 (!('categoryId' in data) || data.categoryId is string)) ||
+               (data.type in ['EXPENSE', 'INCOME'] &&
+                 'categoryId' in data &&
+                 isValidId(data.categoryId) &&
+                 (!('destinationAccountId' in data)))
+             ) &&
+             data.dateMillis is int &&
+             data.dateMillis > 0 &&
+             data.note is string &&
+             data.note.size() <= 200 &&
+             data.createdByUid is string &&
+             isValidId(data.createdByUid) &&
+             data.createdByName is string &&
+             data.createdByName.size() >= 1 &&
+             data.createdByName.size() <= 80 &&
+             data.createdByEmail is string &&
+             data.createdByEmail.size() <= 160 &&
+             isValidMemberList(data.memberUids) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDebt(data, workspaceId) {
+      return data.workspaceId == workspaceId &&
+             data.type in ['RECEIVABLE', 'PAYABLE'] &&
+             data.personName is string &&
+             data.personName.size() >= 1 &&
+             data.personName.size() <= 60 &&
+             data.amountMinor is int &&
+             data.amountMinor > 0 &&
+             data.settledAmountMinor is int &&
+             data.settledAmountMinor >= 0 &&
+             data.settledAmountMinor <= data.amountMinor &&
+             data.remainingAmountMinor is int &&
+             data.remainingAmountMinor >= 0 &&
+             data.remainingAmountMinor == data.amountMinor - data.settledAmountMinor &&
+             isValidId(data.sourceAccountId) &&
+             data.dateMillis is int &&
+             data.dateMillis > 0 &&
+             (!('dueDateMillis' in data) || (data.dueDateMillis is int && data.dueDateMillis > 0)) &&
+             data.note is string &&
+             data.note.size() <= 200 &&
+             data.settled is bool &&
+             data.settlements is list &&
+             data.settlements.size() <= 100 &&
+             (
+               (!data.settled && data.remainingAmountMinor > 0 &&
+                 !('settledDateMillis' in data) && !('settlementAccountId' in data)) ||
+               (data.settled && data.remainingAmountMinor == 0 &&
+                 'settledDateMillis' in data && data.settledDateMillis is int &&
+                 'settlementAccountId' in data && isValidId(data.settlementAccountId))
+             ) &&
+             data.createdByUid is string &&
+             isValidId(data.createdByUid) &&
+             data.createdByName is string &&
+             data.createdByName.size() >= 1 &&
+             data.createdByName.size() <= 80 &&
+             isValidMemberList(data.memberUids) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // 1. Private User Profile (PII-isolated to owner)
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'email', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'activeWorkspaceId', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'activeWorkspaceId', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // 2. Invite Code Exact Lookup (no list scraping)
+    match /invite_codes/{inviteCode} {
+      allow get: if isSignedIn() && isValidInviteCode(inviteCode);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidInviteCode(inviteCode) &&
+                       incoming().keys().hasAll(['workspaceId', 'workspaceName', 'createdBy', 'createdAt']) &&
+                       incoming().keys().hasOnly(['workspaceId', 'workspaceName', 'createdBy', 'createdAt']) &&
+                       isValidInviteLookup(incoming()) &&
+                       existsAfter(/databases/$(database)/documents/workspaces/$(incoming().workspaceId));
+
+      allow update, delete: if false;
+    }
+
+    // 3. Shared Family Workspaces
+    match /workspaces/{workspaceId} {
+      allow get: if isSignedIn() && isValidId(workspaceId) && request.auth.uid in resource.data.memberUids;
+      allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(workspaceId) &&
+                       incoming().ownerId == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().memberUids.size() == 1 &&
+                       incoming().keys().hasAll(['name', 'inviteCode', 'ownerId', 'memberUids', 'currencyCode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['name', 'inviteCode', 'ownerId', 'memberUids', 'currencyCode', 'createdAt', 'updatedAt']) &&
+                       isValidWorkspace(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(workspaceId) &&
+                       isValidWorkspace(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().inviteCode == existing().inviteCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       (
+                         // Action A: Member updates workspace name or currency
+                         (request.auth.uid in existing().memberUids &&
+                           incoming().memberUids == existing().memberUids &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'currencyCode', 'updatedAt'])) ||
+                         // Action B: New family member joins via invite code (adds only themselves to memberUids)
+                         (!(request.auth.uid in existing().memberUids) &&
+                           request.auth.uid in incoming().memberUids &&
+                           incoming().memberUids.size() == existing().memberUids.size() + 1 &&
+                           incoming().memberUids.hasAll(existing().memberUids) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(workspaceId) && existing().ownerId == request.auth.uid;
+
+      // 3a. Accounts subcollection
+      match /accounts/{accountId} {
+        allow get: if isSignedIn() && isValidId(workspaceId) && isValidId(accountId) && request.auth.uid in resource.data.memberUids;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(accountId) &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll(['workspaceId', 'name', 'initialBalanceMinor', 'cachedBalanceMinor', 'iconKey', 'colorArgb', 'defaultAccount', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['workspaceId', 'name', 'initialBalanceMinor', 'cachedBalanceMinor', 'iconKey', 'colorArgb', 'defaultAccount', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         isValidAccount(incoming(), workspaceId) &&
+                         request.auth.uid in getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(accountId) &&
+                         request.auth.uid in existing().memberUids &&
+                         incoming().workspaceId == existing().workspaceId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidAccount(incoming(), workspaceId) &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'initialBalanceMinor', 'cachedBalanceMinor', 'iconKey', 'colorArgb', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['cachedBalanceMinor', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         );
+
+        allow delete: if isSignedIn() && isValidId(workspaceId) && isValidId(accountId) && request.auth.uid in existing().memberUids;
+      }
+
+      // 3b. Categories subcollection
+      match /categories/{categoryId} {
+        allow get: if isSignedIn() && isValidId(workspaceId) && isValidId(categoryId) && request.auth.uid in resource.data.memberUids;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(categoryId) &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll(['workspaceId', 'name', 'type', 'iconKey', 'colorArgb', 'primaryCategory', 'archived', 'sortOrder', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['workspaceId', 'name', 'type', 'iconKey', 'colorArgb', 'primaryCategory', 'archived', 'sortOrder', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         isValidCategory(incoming(), workspaceId) &&
+                         request.auth.uid in getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(categoryId) &&
+                         request.auth.uid in existing().memberUids &&
+                         incoming().workspaceId == existing().workspaceId &&
+                         incoming().type == existing().type &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidCategory(incoming(), workspaceId) &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'iconKey', 'colorArgb', 'archived', 'sortOrder', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         );
+
+        allow delete: if isSignedIn() && isValidId(workspaceId) && isValidId(categoryId) && request.auth.uid in existing().memberUids;
+      }
+
+      // 3c. Transactions subcollection (Expense, Income, and Transfer)
+      match /transactions/{transactionId} {
+        allow get: if isSignedIn() && isValidId(workspaceId) && isValidId(transactionId) && request.auth.uid in resource.data.memberUids;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(transactionId) &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().createdByUid == request.auth.uid &&
+                         incoming().keys().hasAll(['workspaceId', 'type', 'amountMinor', 'accountId', 'dateMillis', 'note', 'createdByUid', 'createdByName', 'createdByEmail', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['workspaceId', 'type', 'amountMinor', 'accountId', 'destinationAccountId', 'categoryId', 'dateMillis', 'note', 'createdByUid', 'createdByName', 'createdByEmail', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         isValidTransaction(incoming(), workspaceId) &&
+                         request.auth.uid in get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(transactionId) &&
+                         request.auth.uid in existing().memberUids &&
+                         incoming().workspaceId == existing().workspaceId &&
+                         incoming().createdByUid == existing().createdByUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTransaction(incoming(), workspaceId) &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['type', 'amountMinor', 'accountId', 'destinationAccountId', 'categoryId', 'dateMillis', 'note', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         );
+
+        allow delete: if isSignedIn() && isValidId(workspaceId) && isValidId(transactionId) && request.auth.uid in existing().memberUids;
+      }
+
+      // 3d. Debts (Receivables & Payables with Partial Settlements) subcollection
+      match /debts/{debtId} {
+        allow get: if isSignedIn() && isValidId(workspaceId) && isValidId(debtId) && request.auth.uid in resource.data.memberUids;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(debtId) &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().createdByUid == request.auth.uid &&
+                         incoming().keys().hasAll(['workspaceId', 'type', 'personName', 'amountMinor', 'settledAmountMinor', 'remainingAmountMinor', 'sourceAccountId', 'dateMillis', 'note', 'settled', 'settlements', 'createdByUid', 'createdByName', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['workspaceId', 'type', 'personName', 'amountMinor', 'settledAmountMinor', 'remainingAmountMinor', 'sourceAccountId', 'dateMillis', 'dueDateMillis', 'note', 'settled', 'settledDateMillis', 'settlementAccountId', 'settlements', 'createdByUid', 'createdByName', 'memberUids', 'createdAt', 'updatedAt']) &&
+                         isValidDebt(incoming(), workspaceId) &&
+                         request.auth.uid in get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.memberUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(workspaceId) &&
+                         isValidId(debtId) &&
+                         request.auth.uid in existing().memberUids &&
+                         incoming().workspaceId == existing().workspaceId &&
+                         incoming().createdByUid == existing().createdByUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidDebt(incoming(), workspaceId) &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['type', 'personName', 'amountMinor', 'remainingAmountMinor', 'settled', 'settledDateMillis', 'settlementAccountId', 'sourceAccountId', 'dateMillis', 'dueDateMillis', 'note', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['settled', 'settledAmountMinor', 'remainingAmountMinor', 'settlements', 'settledDateMillis', 'settlementAccountId', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         );
+
+        allow delete: if isSignedIn() && isValidId(workspaceId) && isValidId(debtId) && request.auth.uid in existing().memberUids;
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">KinLedger</string>
+    <string name="nav_dashboard">Home</string>
+    <string name="nav_debts">Lend &amp; Borrow</string>
+    <string name="nav_reports">Reports</string>
+    <string name="nav_settings">Settings</string>
+    <string name="quick_add_transaction">Add Entry</string>
+    <string name="total_balance_label">Total Family Balance</string>
+    <string name="accounts_section_title">Accounts</string>
+    <string name="recent_transactions_title">Recent Activity</string>
+    <string name="no_transactions_title">Ready for your first entry</string>
+    <string name="no_transactions_subtitle">Tap Add Entry below to log a household expense or remittance in under 10 seconds.</string>
+    <string name="share_statement_chooser">Share Statement</string>
+    <string name="default_web_client_id" translatable="false">582390237671-77fbggb0sn9pu2vsr8ub97jjeqf7l49e.apps.googleusercontent.com</string>
+</resources>

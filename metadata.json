@@ -1,0 +1,6 @@
+{
+  "name": "KinLedger",
+  "description": "Family expense, income, and lending tracker with offline SQLite storage, monthly analytics, and PDF/CSV statement sharing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
