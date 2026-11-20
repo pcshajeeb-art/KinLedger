@@ -21,8 +21,14 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    - name: Build Debug APK
+    - name: Fix Directory Structure and Build APK
       run: |
+        if [ ! -d "app" ] && [ -d "src" ]; then
+          echo "Restructuring project directory: moving src into app/"
+          mkdir -p app
+          mv src app/
+        fi
+
         chmod +x gradlew || true
         ./gradlew assembleDebug --no-daemon || gradle assembleDebug --no-daemon
 
